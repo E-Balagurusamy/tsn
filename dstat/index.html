@@ -1,154 +1,128 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Triotion Dstat</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <meta name="description" content="Triotion - RPS Graph Visualization">
+  <meta name="theme-color" content="#000000">
+  <title>RPS Graph - Triotion</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.0.2/dist/echarts.min.js"></script>
+  
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Raleway', sans-serif;
+      background-color: #000;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      text-align: center;
+    }
 
-    <meta property="description" content="Real-time Dstat visualization for Triotion using CountAPI">
-    <meta property="title" content="Triotion | Dstat">
+    /* Container for the chart */
+    #chart {
+      width: 80vw;
+      height: 60vh;
+      margin-top: 20px;
+    }
 
-    <!-- CountAPI script for hit tracking -->
-    <script src="https://api.countapi.xyz/hit/triotion.xyz/dstat"></script>
-
-    <style>
-        body {
-            background-color: black;
-            font-family: 'Arial', sans-serif;
-            color: white;
-            text-align: center;
-            margin: 0;
-            padding: 0;
-        }
-
-        h1, p {
-            margin-top: 20px;
-        }
-
-        #chart {
-            width: 80vw;
-            height: 60vh;
-            margin: 20vh auto;
-        }
-
-        #viewCount {
-            margin-top: 20px;
-            font-size: 18px;
-            font-weight: bold;
-            color: #91cc75;
-        }
-
-        /* Scrollbar and theme custom color */
-        ::-webkit-scrollbar {
-            width: 10px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background-color: #91cc75;
-            border-radius: 10px;
-        }
-    </style>
+  </style>
 </head>
 
 <body>
-    <h1>Triotion Dstat</h1>
-    <p>Real-time Request Tracking</p>
+  <div id="chart"></div>
 
-    <!-- Graph for Dstat -->
-    <div id="chart"></div>
+  <script>
+    const chart = echarts.init(document.getElementById('chart'));
 
-    <!-- View Count Display -->
-    <div id="viewCount">Loading views...</div>
+    let option = {
+      title: {
+        text: 'Requests Per Second (RPS)',
+        left: 'center',
+        textStyle: {
+          color: '#fff',
+        },
+      },
+      xAxis: {
+        type: 'category',
+        data: [],
+        axisLine: {
+          lineStyle: {
+            color: '#fff',
+          },
+        },
+      },
+      yAxis: {
+        type: 'value',
+        axisLine: {
+          lineStyle: {
+            color: '#fff',
+          },
+        },
+        splitLine: {
+          lineStyle: {
+            color: '#333',
+          },
+        },
+      },
+      series: [
+        {
+          name: 'RPS',
+          type: 'line',
+          data: [],
+          smooth: true,
+          itemStyle: {
+            color: '#ff5722',
+          },
+        },
+      ],
+    };
 
-    <!-- Load ECharts library for charting -->
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5"></script>
+    chart.setOption(option);
 
-    <script>
-        // Initialize ECharts
-        const chart = echarts.init(document.getElementById('chart'));
+    let previousRequests = 0;
 
-        const option = {
-            title: {
-                text: 'Requests per Second',
-                textStyle: {
-                    color: '#91cc75',
-                },
-            },
-            xAxis: {
-                type: 'category',
-                data: [],
-                axisLine: {
-                    lineStyle: {
-                        color: '#91cc75',
-                    },
-                },
-                axisLabel: {
-                    color: '#91cc75',
-                },
-            },
-            yAxis: {
-                type: 'value',
-                axisLine: {
-                    lineStyle: {
-                        color: '#91cc75',
-                    },
-                },
-                axisLabel: {
-                    color: '#91cc75',
-                },
-            },
-            tooltip: {
-                trigger: 'axis',
-                axisPointer: {
-                    type: 'cross',
-                },
-            },
-            series: [{
-                name: 'Requests per Second',
-                type: 'line',
-                smooth: true,
-                data: [],
-                maxDataPoints: 30,
-                itemStyle: {
-                    color: '#91cc75',
-                },
-            }],
-        };
+    function updateGraph() {
+      fetch('https://nodec.mediathektv.com/nginx_status')
+        .then(response => response.text())
+        .then(data => {
+          const now = new Date();
+          const time = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
 
-        chart.setOption(option);
+          // Parse the response from Nginx status
+          const lines = data.split('\n');
+          const requestsLine = lines[2].trim().split(/\s+/); // Get the line with requests
+          const totalRequests = parseInt(requestsLine[2]); // Extract the total requests (3rd value)
 
-        // Function to fetch data from CountAPI and update the graph
-        function updateGraph() {
-            fetch('https://nodec.mediathektv.com/nginx_status')
-                .then(response => response.json())
-                .then(data => {
-                    const now = new Date();
-                    const time = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
+          // Calculate RPS (current total requests - previous total requests)
+          let rps = 0;
+          if (previousRequests > 0) {
+            rps = totalRequests - previousRequests;
+          }
+          previousRequests = totalRequests;
 
-                    option.xAxis.data.push(time);
-                    option.series[0].data.push(data.value);
+          // Update the graph
+          option.xAxis.data.push(time);
+          option.series[0].data.push(rps);
 
-                    if (option.xAxis.data.length > option.series[0].maxDataPoints) {
-                        option.xAxis.data.shift();
-                        option.series[0].data.shift();
-                    }
+          // Limit the number of data points shown on the graph
+          if (option.xAxis.data.length > 20) {
+            option.xAxis.data.shift();
+            option.series[0].data.shift();
+          }
 
-                    chart.setOption(option, true);
-                })
-                .catch(error => console.error('Error fetching data from CountAPI:', error));
-        }
+          chart.setOption(option);
+        })
+        .catch(error => console.error('Error fetching Nginx status:', error));
+    }
 
-        // Update the graph every second
-        setInterval(updateGraph, 1000);
+    // Update the graph every second
+    setInterval(updateGraph, 1000);
 
-        // Fetch and display the total view count using CountAPI
-        fetch('https://nodec.mediathektv.com/nginx_status')
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('viewCount').innerText = `Views: ${data.value}`;
-            })
-            .catch(error => console.error('Error fetching view count:', error));
-    </script>
+  </script>
 </body>
-
 </html>
