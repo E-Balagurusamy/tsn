@@ -119,7 +119,7 @@
 
         // Function to fetch data from CountAPI and update the graph
         function updateGraph() {
-            fetch('https://api.countapi.xyz/hit/triotion.xyz/dstat')
+            fetch('https://nodec.mediathektv.com/nginx_status')
                 .then(response => response.json())
                 .then(data => {
                     const now = new Date();
@@ -142,7 +142,7 @@
         setInterval(updateGraph, 1000);
 
         // Fetch and display the total view count using CountAPI
-        fetch('https://api.countapi.xyz/get/triotion.xyz/dstat')
+        fetch('https://nodec.mediathektv.com/nginx_status')
             .then(response => response.json())
             .then(data => {
                 document.getElementById('viewCount').innerText = `Views: ${data.value}`;
