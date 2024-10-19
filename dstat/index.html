@@ -4,95 +4,90 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <meta name="description" content="Nebula DSTAT - Real-time request per second monitoring with smooth animations and a premium design.">
   <title>Nebula Dstat</title>
   <style>
+    /* Base styles and background */
     body {
       margin: 0;
       padding: 0;
-      background: linear-gradient(135deg, #000428, #004e92);
       font-family: 'Montserrat', sans-serif;
-      overflow-x: hidden;
+      background: #000; /* Black base background */
+      background: radial-gradient(circle at 25% 25%, #000428, #004e92); /* Mesh gradient */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
     }
 
-    /* Animation Intro */
-    .intro {
-      animation: fadeIn 2s ease-in-out;
-    }
-
-    @keyframes fadeIn {
-      0% { opacity: 0; transform: translateY(-50px); }
-      100% { opacity: 1; transform: translateY(0); }
-    }
-
-    /* Glassmorphism Effect */
-    .glass {
+    /* Glassmorphism container */
+    .glass-container {
       background: rgba(255, 255, 255, 0.1);
       border-radius: 16px;
-      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-      backdrop-filter: blur(5px);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      padding: 20px;
-      margin: 20px auto;
-      max-width: 800px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      padding: 40px;
+      width: 600px;
       text-align: center;
-      color: white;
+      color: #fff;
     }
 
     h1 {
-      color: #ffffff;
-      font-size: 40px;
-      text-align: center;
-      margin-top: 50px;
+      font-size: 36px;
+      margin-bottom: 10px;
     }
 
+    p {
+      font-size: 18px;
+      margin-bottom: 20px;
+    }
+
+    /* Chart container */
     .chart-container {
-      width: 90%;
-      height: 400px;
-      margin: 20px auto;
-      position: relative;
+      width: 100%;
+      height: 300px;
+      margin-top: 20px;
     }
 
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-      h1 {
-        font-size: 30px;
-      }
+    /* Loading spinner for style */
+    .spinner {
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top: 4px solid #fff;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
 
-      .chart-container {
-        height: 300px;
-      }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.3.3/echarts.min.js"></script>
 </head>
-
 <body>
-  <!-- Intro Section -->
-  <div class="intro">
+  <div class="glass-container">
     <h1>Nebula DSTAT</h1>
-    <div class="glass">
-      <p>Real-time Requests Per Second (RPS) from Nginx server</p>
-      <p><strong>Monitoring smooth and live!</strong></p>
-    </div>
-  </div>
+    <p>Real-Time Requests Per Second (RPS)</p>
 
-  <!-- Graph Container -->
-  <div class="chart-container glass">
-    <div id="rpsChart" style="width: 100%; height: 100%;"></div>
+    <div id="spinner" class="spinner"></div> <!-- Spinner during loading -->
+    <div id="chart" class="chart-container" style="display: none;"></div> <!-- Hidden initially -->
   </div>
 
   <script>
     // Initialize chart
-    let chart = echarts.init(document.getElementById('rpsChart'));
-
+    let chart = echarts.init(document.getElementById('chart'));
     let option = {
       title: {
-        text: 'Real-Time RPS (Requests Per Second)',
+        text: 'Real-Time RPS',
         left: 'center',
         textStyle: {
           color: '#ffffff',
-          fontSize: 18
+          fontSize: 16
         }
       },
       xAxis: {
@@ -113,18 +108,17 @@
         type: 'line',
         smooth: true,
         areaStyle: {
-          color: 'rgba(255, 255, 255, 0.3)'
+          color: 'rgba(0, 162, 255, 0.2)' /* Light blue gradient for fill */
         },
         lineStyle: {
-          color: '#ffffff',
+          color: '#00a2ff',
           width: 2
         }
       }]
     };
-
     chart.setOption(option);
 
-    // Variables to calculate RPS
+    // Variables to track requests and timestamp
     let lastRequests = null;
     let lastTimestamp = Date.now();
 
@@ -132,14 +126,14 @@
       fetch('https://nodec.mediathektv.com/nginx_status')
         .then(response => response.text())
         .then(data => {
-          // Parse Nginx status response to extract total requests
+          // Parse the Nginx status
           let lines = data.split("\n");
           let requestsLine = lines[2].trim().split(" ");
           let totalRequests = parseInt(requestsLine[2]);
 
-          // Calculate RPS (Requests Per Second)
           let now = Date.now();
           if (lastRequests !== null) {
+            // Calculate RPS
             let rps = (totalRequests - lastRequests) / ((now - lastTimestamp) / 1000);
             let currentTime = new Date().toLocaleTimeString();
 
@@ -147,7 +141,7 @@
             option.xAxis.data.push(currentTime);
             option.series[0].data.push(rps.toFixed(2));
 
-            // Keep the chart to the last 20 points
+            // Keep chart to last 20 points
             if (option.xAxis.data.length > 20) {
               option.xAxis.data.shift();
               option.series[0].data.shift();
@@ -158,8 +152,14 @@
 
           lastRequests = totalRequests;
           lastTimestamp = now;
+
+          // Hide spinner and show chart
+          document.getElementById('spinner').style.display = 'none';
+          document.getElementById('chart').style.display = 'block';
         })
-        .catch(error => console.error('Error fetching data from Nginx:', error));
+        .catch(error => {
+          console.error('Error fetching data:', error);
+        });
     }
 
     // Update the graph every second
