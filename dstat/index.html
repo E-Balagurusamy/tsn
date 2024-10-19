@@ -4,125 +4,166 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <meta name="description" content="Triotion - RPS Graph Visualization">
-  <meta name="theme-color" content="#000000">
-  <title>RPS Graph - Triotion</title>
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5.0.2/dist/echarts.min.js"></script>
-  
+  <meta name="description" content="Nebula DSTAT - Real-time request per second monitoring with smooth animations and a premium design.">
+  <title>Nebula Dstat</title>
   <style>
     body {
       margin: 0;
       padding: 0;
-      font-family: 'Raleway', sans-serif;
-      background-color: #000;
-      color: #fff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
+      background: linear-gradient(135deg, #000428, #004e92);
+      font-family: 'Montserrat', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* Animation Intro */
+    .intro {
+      animation: fadeIn 2s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      0% { opacity: 0; transform: translateY(-50px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Glassmorphism Effect */
+    .glass {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 20px;
+      margin: 20px auto;
+      max-width: 800px;
       text-align: center;
+      color: white;
     }
 
-    /* Container for the chart */
-    #chart {
-      width: 80vw;
-      height: 60vh;
-      margin-top: 20px;
+    h1 {
+      color: #ffffff;
+      font-size: 40px;
+      text-align: center;
+      margin-top: 50px;
     }
 
+    .chart-container {
+      width: 90%;
+      height: 400px;
+      margin: 20px auto;
+      position: relative;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 30px;
+      }
+
+      .chart-container {
+        height: 300px;
+      }
+    }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.3.3/echarts.min.js"></script>
 </head>
 
 <body>
-  <div id="chart"></div>
+  <!-- Intro Section -->
+  <div class="intro">
+    <h1>Nebula DSTAT</h1>
+    <div class="glass">
+      <p>Real-time Requests Per Second (RPS) from Nginx server</p>
+      <p><strong>Monitoring smooth and live!</strong></p>
+    </div>
+  </div>
+
+  <!-- Graph Container -->
+  <div class="chart-container glass">
+    <div id="rpsChart" style="width: 100%; height: 100%;"></div>
+  </div>
 
   <script>
-    const chart = echarts.init(document.getElementById('chart'));
+    // Initialize chart
+    let chart = echarts.init(document.getElementById('rpsChart'));
 
     let option = {
       title: {
-        text: 'Requests Per Second (RPS)',
+        text: 'Real-Time RPS (Requests Per Second)',
         left: 'center',
         textStyle: {
-          color: '#fff',
-        },
+          color: '#ffffff',
+          fontSize: 18
+        }
       },
       xAxis: {
         type: 'category',
+        boundaryGap: false,
         data: [],
-        axisLine: {
-          lineStyle: {
-            color: '#fff',
-          },
-        },
+        axisLabel: { color: '#fff' },
+        axisLine: { lineStyle: { color: '#fff' } }
       },
       yAxis: {
         type: 'value',
-        axisLine: {
-          lineStyle: {
-            color: '#fff',
-          },
-        },
-        splitLine: {
-          lineStyle: {
-            color: '#333',
-          },
-        },
+        axisLabel: { color: '#fff' },
+        axisLine: { lineStyle: { color: '#fff' } },
+        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
       },
-      series: [
-        {
-          name: 'RPS',
-          type: 'line',
-          data: [],
-          smooth: true,
-          itemStyle: {
-            color: '#ff5722',
-          },
+      series: [{
+        data: [],
+        type: 'line',
+        smooth: true,
+        areaStyle: {
+          color: 'rgba(255, 255, 255, 0.3)'
         },
-      ],
+        lineStyle: {
+          color: '#ffffff',
+          width: 2
+        }
+      }]
     };
 
     chart.setOption(option);
 
-    let previousRequests = 0;
+    // Variables to calculate RPS
+    let lastRequests = null;
+    let lastTimestamp = Date.now();
 
     function updateGraph() {
       fetch('https://nodec.mediathektv.com/nginx_status')
         .then(response => response.text())
         .then(data => {
-          const now = new Date();
-          const time = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
+          // Parse Nginx status response to extract total requests
+          let lines = data.split("\n");
+          let requestsLine = lines[2].trim().split(" ");
+          let totalRequests = parseInt(requestsLine[2]);
 
-          // Parse the response from Nginx status
-          const lines = data.split('\n');
-          const requestsLine = lines[2].trim().split(/\s+/); // Get the line with requests
-          const totalRequests = parseInt(requestsLine[2]); // Extract the total requests (3rd value)
+          // Calculate RPS (Requests Per Second)
+          let now = Date.now();
+          if (lastRequests !== null) {
+            let rps = (totalRequests - lastRequests) / ((now - lastTimestamp) / 1000);
+            let currentTime = new Date().toLocaleTimeString();
 
-          // Calculate RPS (current total requests - previous total requests)
-          let rps = 0;
-          if (previousRequests > 0) {
-            rps = totalRequests - previousRequests;
+            // Update chart with the new RPS value
+            option.xAxis.data.push(currentTime);
+            option.series[0].data.push(rps.toFixed(2));
+
+            // Keep the chart to the last 20 points
+            if (option.xAxis.data.length > 20) {
+              option.xAxis.data.shift();
+              option.series[0].data.shift();
+            }
+
+            chart.setOption(option);
           }
-          previousRequests = totalRequests;
 
-          // Update the graph
-          option.xAxis.data.push(time);
-          option.series[0].data.push(rps);
-
-          // Limit the number of data points shown on the graph
-          if (option.xAxis.data.length > 20) {
-            option.xAxis.data.shift();
-            option.series[0].data.shift();
-          }
-
-          chart.setOption(option);
+          lastRequests = totalRequests;
+          lastTimestamp = now;
         })
-        .catch(error => console.error('Error fetching Nginx status:', error));
+        .catch(error => console.error('Error fetching data from Nginx:', error));
     }
 
     // Update the graph every second
     setInterval(updateGraph, 1000);
-
   </script>
 </body>
 </html>
